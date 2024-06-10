@@ -2,7 +2,32 @@
 // ❗ Check the README for the appropriate sequence to follow.
 import React from 'react'
 
+// *STEP ONE* 
+// bring in your required imports (import React was already done for you)
+import { useState, useEffect } from "react";
+// import axios from 'axios';
+// import * as yup from yup;
+
+// *STEP TWO*
+// set initalValues using state. set up as annoymous function builiding an object with empty string
+const startingData = () => ({
+  username: "",
+  favFood: "",
+  favLanguage: "",
+  agreement: false
+})
+
+//use to implement validation
+const startingErrors = () => ({
+  username: "",
+  favFood: "",
+  favLanguage: "",
+  agreement: "", // this is empty string
+})
+
 const e = { // This is a dictionary of validation error messages.
+
+
   // username
   usernameRequired: 'username is required',
   usernameMin: 'username must be at least 3 characters',
@@ -21,11 +46,24 @@ const e = { // This is a dictionary of validation error messages.
 // ✨ TASK: BUILD YOUR FORM SCHEMA HERE
 // The schema should use the error messages contained in the object above.
 
+// first step 
+
 export default function App() {
   // ✨ TASK: BUILD YOUR STATES HERE
   // You will need states to track (1) the form, (2) the validation errors,
   // (3) whether submit is disabled, (4) the success message from the server,
   // and (5) the failure message from the server.
+
+  const [data, setData] = useState(startingData());
+  const [error, setErrors] = useState(startingErrors());
+
+  //have to set up success and failure messages from the server being executed/submitted
+  //if rendered correctly, if you add a string to intialize state you will see either:
+  //success or failure message (should also remove the errors from the page if connected to your components correctly)
+  const [serverSubmit, setServerSubmit] = useState();
+  const [serverFailedSubmit, setServerFailedSubmit] = useState();
+
+
 
   // ✨ TASK: BUILD YOUR EFFECT HERE
   // Whenever the state of the form changes, validate it against the schema
@@ -51,14 +89,14 @@ export default function App() {
   return (
     <div> {/* TASK: COMPLETE THE JSX */}
       <h2>Create an Account</h2>
-      <form>
-        <h4 className="success">Success! Welcome, new user!</h4>
-        <h4 className="error">Sorry! Username is taken</h4>
+      <form onSubmit={onSubmit}>
+        {serverSubmit && <h4 className="success">{serverSubmit}</h4>} {/* setting these values to falsy will stop it from rendering on launch*/}
+        {serverFailedSubmit && <h4 className="error">{serverFailedSubmit}</h4>} 
 
         <div className="inputGroup">
           <label htmlFor="username">Username:</label>
           <input id="username" name="username" type="text" placeholder="Type Username" />
-          <div className="validation">username is required</div>
+          { error.username && <div className="validation">{error.username}</div> }
         </div>
 
         <div className="inputGroup">
@@ -73,7 +111,7 @@ export default function App() {
               Rust
             </label>
           </fieldset>
-          <div className="validation">favLanguage is required</div>
+          { error.favLanguage && <div className="validation">{error.favLanguage}</div> }
         </div>
 
         <div className="inputGroup">
@@ -84,7 +122,7 @@ export default function App() {
             <option value="spaghetti">Spaghetti</option>
             <option value="broccoli">Broccoli</option>
           </select>
-          <div className="validation">favFood is required</div>
+            { error.favFood &&<div className="validation">{error.favFood}</div> }
         </div>
 
         <div className="inputGroup">
@@ -92,7 +130,7 @@ export default function App() {
             <input id="agreement" type="checkbox" name="agreement" />
             Agree to our terms
           </label>
-          <div className="validation">agreement is required</div>
+           { error.agreement && <div className="validation">{error.agreement}</div> }
         </div>
 
         <div>
