@@ -5,12 +5,11 @@ import React from 'react'
 // *STEP ONE* 
 // bring in your required imports (import React was already done for you)
 import { useState, useEffect } from "react";
-// import axios from 'axios';
-// import * as yup from yup;
-
+import axios from 'axios';
+import * as yup from 'yup';
 // *STEP TWO*
 // set initalValues using state. set up as annoymous function builiding an object with empty string
-const startingData = () => ({
+const getInitialValues = () => ({
   username: "",
   favFood: "",
   favLanguage: "",
@@ -18,7 +17,7 @@ const startingData = () => ({
 })
 
 //use to implement validation
-const startingErrors = () => ({
+const getInitialErrors = () => ({
   username: "",
   favFood: "",
   favLanguage: "",
@@ -43,6 +42,16 @@ const e = { // This is a dictionary of validation error messages.
   agreementOptions: 'agreement must be accepted',
 }
 
+//the schema allows us to check the data in the form for validity and we can check the entire form at once, or specfic fields
+const userSchema = yup.object().shape({
+  username: yup.string().trim().required(e.usernameRequired).min(3, e.usernameMin).max(20, e.usernameMax),
+  favLanguage: yup.string().required(e.favLanguageRequired).trim().oneOf(['javascript', 'rust'], e.favLanguageOptions),
+  favFood: yup.string().required(e.favFoodRequired).trim().oneOf(['broccoli', 'spaghetti', 'pizza'], e.favFoodOptions),
+  agreement: yup.boolean().required(e.agreementRequired).oneOf([true], e.agreementOptions),
+}
+
+)
+
 // ✨ TASK: BUILD YOUR FORM SCHEMA HERE
 // The schema should use the error messages contained in the object above.
 
@@ -54,14 +63,20 @@ export default function App() {
   // (3) whether submit is disabled, (4) the success message from the server,
   // and (5) the failure message from the server.
 
-  const [data, setData] = useState(startingData());
-  const [error, setErrors] = useState(startingErrors());
+  const [values, setValues] = useState(getInitialValues());
+  const [errors, setErrors] = useState(getInitialErrors());
 
   //have to set up success and failure messages from the server being executed/submitted
   //if rendered correctly, if you add a string to intialize state you will see either:
   //success or failure message (should also remove the errors from the page if connected to your components correctly)
-  const [serverSubmit, setServerSubmit] = useState();
-  const [serverFailedSubmit, setServerFailedSubmit] = useState();
+  const [serverSuccess, setServerSuccess] = useState();
+  const [serverFailure, setServerFailure] = useState();
+
+  const [formEnabled, setFormEnabled] = useState(false);
+
+  useEffect(() => {
+    userSchema.isValid(values).then(setFormEnabled)
+  }, [values])
 
 
 
@@ -69,72 +84,91 @@ export default function App() {
   // Whenever the state of the form changes, validate it against the schema
   // and update the state that tracks whether the form is submittable.
 
-  const onChange = evt => {
+  const onChange = (evt) => {
     // ✨ TASK: IMPLEMENT YOUR INPUT CHANGE HANDLER
     // The logic is a bit different for the checkbox, but you can check
     // whether the type of event target is "checkbox" and act accordingly.
     // At every change, you should validate the updated value and send the validation
     // error to the state where we track frontend validation errors.
+
+    let { type, name, value, checked } = evt.target
+    value = type == 'checkbox' ? checked : value
+    setValues({ ...values, [name]: value })
+    yup.reach(userSchema, name).validate(value)
+      .then(() => setErrors({ ...errors, [name]: '' }))
+      .catch(() => setErrors({ ...errors, [name]: err.errors[0] }))
   }
 
-  const onSubmit = evt => {
+  const onSubmit = (evt) => {
     // ✨ TASK: IMPLEMENT YOUR SUBMIT HANDLER
     // Lots to do here! Prevent default behavior, disable the form to avoid
     // double submits, and POST the form data to the endpoint. On success, reset
     // the form. You must put the success and failure messages from the server
     // in the states you have reserved for them, and the form
     // should be re-enabled.
+    evt.preventDefault()
+    axios.post('https://webapis.bloomtechdev.com/registration', values)
+      .then(res => {
+        setValues(getInitialValues())
+        setServerSuccess(res.data.message)
+        setServerFailure()
+      })
+      .catch(err => {
+        setServerFailure(err.response.data.message)
+        setServerSuccess()
+      }
+      )
   }
 
   return (
     <div> {/* TASK: COMPLETE THE JSX */}
       <h2>Create an Account</h2>
       <form onSubmit={onSubmit}>
-        {serverSubmit && <h4 className="success">{serverSubmit}</h4>} {/* setting these values to falsy will stop it from rendering on launch*/}
-        {serverFailedSubmit && <h4 className="error">{serverFailedSubmit}</h4>} 
+        {serverSuccess && <h4 className="success">{serverSuccess}</h4>} {/* setting these values to falsy will stop it from rendering on launch*/}
+        {serverFailure && <h4 className="error">{serverFailure}</h4>}
 
         <div className="inputGroup">
           <label htmlFor="username">Username:</label>
-          <input id="username" name="username" type="text" placeholder="Type Username" />
-          { error.username && <div className="validation">{error.username}</div> }
+          <input values={values.username} onChange={onChange} id="username" name="username" type="text" placeholder="Type Username" />
+          {errors.username && <div className="validation">{errors.username}</div>}
         </div>
 
         <div className="inputGroup">
           <fieldset>
             <legend>Favorite Language:</legend>
             <label>
-              <input type="radio" name="favLanguage" value="javascript" />
+              <input checked={values.favLanguage == 'javascript'} onChange={onChange} type="radio" name="favLanguage" value="javascript" />
               JavaScript
             </label>
             <label>
-              <input type="radio" name="favLanguage" value="rust" />
+              <input checked={values.favLanguage == 'rust'} onChange={onChange} type="radio" name="favLanguage" value="rust" />
               Rust
             </label>
           </fieldset>
-          { error.favLanguage && <div className="validation">{error.favLanguage}</div> }
+          {errors.favLanguage && <div className="validation">{errors.favLanguage}</div>}
         </div>
 
         <div className="inputGroup">
           <label htmlFor="favFood">Favorite Food:</label>
-          <select id="favFood" name="favFood">
+          <select value={values.favFood} onChange={onChange} id="favFood" name="favFood">
             <option value="">-- Select Favorite Food --</option>
             <option value="pizza">Pizza</option>
             <option value="spaghetti">Spaghetti</option>
             <option value="broccoli">Broccoli</option>
           </select>
-            { error.favFood &&<div className="validation">{error.favFood}</div> }
+          {errors.favFood && <div className="validation">{errors.favFood}</div>}
         </div>
 
         <div className="inputGroup">
           <label>
-            <input id="agreement" type="checkbox" name="agreement" />
+            <input checked={values.agreement} onChange={onChange} id="agreement" type="checkbox" name="agreement" />
             Agree to our terms
           </label>
-           { error.agreement && <div className="validation">{error.agreement}</div> }
+          {errors.agreement && <div className="validation">{errors.agreement}</div>}
         </div>
 
         <div>
-          <input type="submit" disabled={false} />
+          <input type="submit" disabled={!formEnabled} />
         </div>
       </form>
     </div>
